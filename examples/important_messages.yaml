@@ -1,0 +1,30 @@
+apiVersion: flowforge/v1alpha1
+kind: Workflow
+
+metadata:
+  name: important-messages
+  labels:
+    source: telegram
+
+spec:
+  trigger:
+    type: telegram.message
+    as: message
+
+  steps:
+    - id: check_sender
+      if: "message.sender_id in inputs.target_contacts"
+      then:
+        - id: analyze
+          do: ai.importance
+          as: analysis
+          with:
+            text: "$message.text"
+            context: "$inputs.business_context"
+
+        - id: send_admin
+          if: "analysis.important"
+          do: telegram.send
+          with:
+            to: "$inputs.admin"
+            text: "$message.text"
