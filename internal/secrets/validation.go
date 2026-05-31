@@ -39,7 +39,7 @@ func ValidateUpdate(oldSecret, newSecret SecretResource) error {
 	oldNormalized := oldSecret.Normalized()
 	if oldNormalized.Immutable {
 		newNormalized := newSecret.Normalized()
-		if !equalBytesMap(oldNormalized.Data, newNormalized.Data) || oldNormalized.Type != newNormalized.Type {
+		if !equalBytesMap(oldNormalized.Data, newNormalized.Data) || oldNormalized.Type != newNormalized.Type || !newNormalized.Immutable {
 			return ErrSecretImmutable
 		}
 	}

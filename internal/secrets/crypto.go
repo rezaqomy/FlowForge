@@ -37,6 +37,9 @@ type EnvelopeCipher struct {
 }
 
 func NewEnvelopeCipher(provider MasterKeyProvider) *EnvelopeCipher {
+	if provider == nil {
+		panic("nil MasterKeyProvider passed to NewEnvelopeCipher")
+	}
 	return &EnvelopeCipher{provider: provider}
 }
 

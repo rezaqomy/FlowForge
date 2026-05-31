@@ -23,17 +23,11 @@ func (s *EncryptedFileStore) Create(_ context.Context, secret SecretResource) er
 	if err := ValidateCreate(normalized); err != nil {
 		return err
 	}
-	path := s.path(normalized.Metadata.Name)
-	if _, err := os.Stat(path); err == nil {
-		return ErrSecretExists
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 	encrypted, err := s.cipher.Encrypt(normalized)
 	if err != nil {
 		return err
 	}
-	return s.write(path, encrypted)
+	return s.writeExclusive(s.path(normalized.Metadata.Name), encrypted)
 }
 
 func (s *EncryptedFileStore) Get(_ context.Context, name string) (SecretResource, error) {
@@ -140,6 +134,33 @@ func (s *EncryptedFileStore) write(path string, secret EncryptedSecret) error {
 		return err
 	}
 	return os.Rename(tmpName, path)
+}
+
+func (s *EncryptedFileStore) writeExclusive(path string, secret EncryptedSecret) error {
+	if err := os.MkdirAll(s.dir, 0700); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(secret, "", "  ")
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return ErrSecretExists
+		}
+		return err
+	}
+	defer file.Close()
+	if _, err := file.Write(data); err != nil {
+		os.Remove(path)
+		return err
+	}
+	if err := file.Close(); err != nil {
+		os.Remove(path)
+		return err
+	}
+	return nil
 }
 
 func (s *EncryptedFileStore) path(name string) string {
