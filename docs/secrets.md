@@ -22,7 +22,7 @@ metadata:
 type: flowforge.io/api-key
 immutable: true
 stringData:
-  api-key: "123456:token"
+  api-key: "<api-key-placeholder>"
 ```
 
 `stringData` is write-only input. The package normalizes it into binary-safe `data` and clears `stringData`.
