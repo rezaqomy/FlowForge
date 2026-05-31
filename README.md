@@ -6,7 +6,7 @@ The current project is an MVP focused on the workflow kernel and local execution
 
 ## What It Does
 
-- Defines workflows as Kubernetes-style YAML resources.
+- Defines workflows as declarative YAML resources.
 - Registers trigger and operation plugins in a runtime registry.
 - Validates workflow references, required operation inputs, expressions, and side-effect warnings.
 - Resolves `$path.to.value` references from the workflow scope before invoking operations.
@@ -27,6 +27,7 @@ internal/kernel/            Workflow model, expression evaluator, resolver, engi
 internal/plugins/           Built-in example plugins
 internal/render/            Workflow pseudocode renderer
 internal/runner/            Execution wrapper and event collection
+internal/secrets/           Native secret model, validation, encryption, and store boundary
 internal/store/             Store interfaces and future SQLite package
 internal/validation/        Workflow validator
 docs/                       Detailed project documentation
@@ -99,6 +100,7 @@ spec:
 - [Architecture](docs/architecture.md)
 - [Workflow Specification](docs/workflow-spec.md)
 - [Plugin Guide](docs/plugins.md)
+- [Secret Management](docs/secrets.md)
 - [Development Guide](docs/development.md)
 
 ## Current Limitations

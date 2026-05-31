@@ -71,6 +71,10 @@ The runner wraps the kernel engine and adds an in-memory event sink. It returns 
 
 The pseudocode renderer converts workflow YAML into a readable outline. It uses catalog display hints when available and strips the `inputs.` prefix from displayed references for readability.
 
+### `internal/secrets`
+
+The secrets package defines a FlowForge-native secret resource model. It includes validation, immutable secret checks, explicit key references, redaction helpers, envelope encryption, and encrypted memory/file store implementations.
+
 ### `internal/plugins`
 
 Built-in example plugins register both executable operations and catalog manifests:
