@@ -91,7 +91,7 @@ spec:
 | Plugin | Type | Purpose |
 | --- | --- | --- |
 | Telegram | `telegram.message` trigger | Represents an incoming Telegram message event. |
-| Telegram | `telegram.send` operation | Sends a Telegram message in `live` mode and returns a message id. |
+| Telegram | `telegram.send` operation | Sends a Telegram Bot API `sendMessage` request in `live` mode and returns a message id. |
 | AI | `ai.importance` operation | Classifies a message as important using a deterministic keyword-based implementation. |
 | Storage | `storage.save` operation | Saves a value to in-memory storage in `live` mode. |
 
@@ -108,5 +108,11 @@ spec:
 - `cmd/server` is a demo command, not a production HTTP server.
 - `internal/api` contains placeholders only.
 - `internal/store/sqlite` is reserved for a future SQLite-backed implementation.
-- Built-in plugins are local examples, not production integrations.
+- Some built-in plugins are local examples rather than production integrations.
 - `dry_run` prevents side effects in the provided side-effecting plugins, but operation implementations are responsible for honoring the run mode.
+
+## Live Telegram Sends
+
+`telegram.send` can read the bot token from the encrypted secret store with `SecretRef{Name: "telegram-bot", Key: "api-key"}` when a workflow runs in `live` mode. `TELEGRAM_BOT_TOKEN` remains available as a fallback. Keep the token out of workflow YAML and pass chat ids through runtime inputs, for example `inputs.admin`.
+
+The optional proxy can also come from a secret, for example `SecretRef{Name: "telegram-proxy", Key: "url"}`. `TELEGRAM_PROXY_URL` remains available as a fallback. Supported schemes are `http`, `https`, and `socks5`; keep proxy credentials out of workflow YAML.

@@ -119,6 +119,8 @@ Inputs:
 | --- | --- | --- |
 | `to` | string | Yes |
 | `text` | string | Yes |
+| `parse_mode` | string | No |
+| `disable_notification` | boolean | No |
 
 Outputs:
 
@@ -128,7 +130,9 @@ Outputs:
 
 Side effect: yes.
 
-Current implementation appends to an in-memory `Sent` slice only in `live` mode and always returns a deterministic message id.
+In `dry_run` mode, the operation does not call Telegram and returns a deterministic message id. In `live` mode, it sends a JSON `sendMessage` request to Telegram's Bot API and returns the message id from Telegram's response. Prefer resolving the bot token from the encrypted secret store with `SecretRef{Name: "telegram-bot", Key: "api-key"}`; `TELEGRAM_BOT_TOKEN` is only a fallback. Do not put bot tokens in workflow YAML.
+
+Use `SecretRef{Name: "telegram-proxy", Key: "url"}` to route live Telegram sends through an `http`, `https`, or `socks5` proxy stored as a secret. `TELEGRAM_PROXY_URL` is available as a fallback. Treat proxy URLs with embedded credentials as secrets and keep them out of workflow YAML.
 
 ### `storage.save`
 

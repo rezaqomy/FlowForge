@@ -6,7 +6,7 @@ import (
 )
 
 func Register(reg *kernel.Registry, cat *catalog.Registry) {
-	reg.Register("telegram.send", &SendOperation{})
+	reg.Register("telegram.send", NewSendOperation())
 	cat.RegisterManifest(catalog.PluginManifest{
 		Name: "telegram",
 		Triggers: []catalog.TriggerManifest{
@@ -33,8 +33,10 @@ func Register(reg *kernel.Registry, cat *catalog.Registry) {
 				InputSchema: catalog.Schema{
 					Type: "object",
 					Properties: map[string]catalog.Schema{
-						"to":   {Type: "string"},
-						"text": {Type: "string"},
+						"to":                   {Type: "string"},
+						"text":                 {Type: "string"},
+						"parse_mode":           {Type: "string"},
+						"disable_notification": {Type: "boolean"},
 					},
 					Required: []string{"to", "text"},
 				},
