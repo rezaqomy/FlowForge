@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -54,7 +55,7 @@ func run(addr, dataDir string, telegramPoll bool, workflowPaths []string) error 
 		return err
 	}
 	secretStore := secrets.NewEncryptedFileStore(filepath.Join(dataDir, "secrets"), cipher)
-	workflowStore := store.NewMemoryWorkflowStore()
+	workflowStore := store.NewFileWorkflowStore(filepath.Join(dataDir, "workflows"))
 
 	reg := kernel.NewRegistry()
 	cat := catalog.New()
@@ -71,7 +72,11 @@ func run(addr, dataDir string, telegramPoll bool, workflowPaths []string) error 
 		if err != nil {
 			return err
 		}
-		if err := workflowStore.Save(workflow); err != nil {
+		if err := workflowStore.Create(workflow); err != nil {
+			if errors.Is(err, store.ErrWorkflowExists) {
+				log.Printf("workflow %q already exists in persistent state; startup file %s skipped", workflow.Metadata.Name, path)
+				continue
+			}
 			return err
 		}
 		log.Printf("loaded workflow %q from %s", workflow.Metadata.Name, path)

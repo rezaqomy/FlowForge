@@ -47,6 +47,19 @@ func (s *Server) handleGetSecret(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, secretView(secret))
 }
 
+func (s *Server) handleListSecrets(w http.ResponseWriter, r *http.Request) {
+	list, err := s.secrets.List(r.Context())
+	if err != nil {
+		writeError(w, secretStatus(err), err)
+		return
+	}
+	out := make([]map[string]any, 0, len(list))
+	for _, secret := range list {
+		out = append(out, secretView(secret))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"secrets": out})
+}
+
 func (s *Server) handleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 	name, err := secretNameFromPath(r.URL.Path)
 	if err != nil {
@@ -70,8 +83,14 @@ func (s *Server) handleUpdateSecret(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("secret name in path and body must match"))
 		return
 	}
-	if err := s.secrets.Update(r.Context(), secret); err != nil {
-		writeError(w, secretStatus(err), err)
+	var updateErr error
+	if r.URL.Query().Get("replace") == "true" {
+		updateErr = s.secrets.Replace(r.Context(), secret)
+	} else {
+		updateErr = s.secrets.Update(r.Context(), secret)
+	}
+	if updateErr != nil {
+		writeError(w, secretStatus(updateErr), updateErr)
 		return
 	}
 	updated, err := s.secrets.Get(r.Context(), name)

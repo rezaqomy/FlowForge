@@ -20,7 +20,7 @@ The current project is an MVP focused on the workflow kernel and local execution
 ```text
 cmd/server/                 Demo executable entry point
 examples/                   Example workflow and integration-style test
-internal/api/               Reserved HTTP API package
+internal/api/               HTTP resource and webhook handlers
 internal/app/               Application service layer
 internal/catalog/           Plugin manifests and schema registry
 internal/kernel/            Workflow model, expression evaluator, resolver, engine
@@ -106,10 +106,84 @@ spec:
 ## Current Limitations
 
 - `cmd/server` is a demo command, not a production HTTP server.
-- `internal/api` contains placeholders only.
 - `internal/store/sqlite` is reserved for a future SQLite-backed implementation.
 - Some built-in plugins are local examples rather than production integrations.
 - `dry_run` prevents side effects in the provided side-effecting plugins, but operation implementations are responsible for honoring the run mode.
+
+## Resource Management
+
+Use the same manifest command to create a resource or update an existing one:
+
+```sh
+go run ./cmd/flowforge apply -f examples/plugins/telegram.yaml
+go run ./cmd/flowforge apply -f examples/secrets/telegram-proxy.yaml
+```
+
+Get a single resource:
+
+```sh
+go run ./cmd/flowforge get workflow telegram-echo
+go run ./cmd/flowforge get secret telegram-proxy
+```
+
+List resources:
+
+```sh
+go run ./cmd/flowforge get workflows
+go run ./cmd/flowforge get secrets
+```
+
+The default output is formatted JSON. Use `-o yaml` when YAML is preferred:
+
+```sh
+go run ./cmd/flowforge get workflow telegram-echo -o yaml
+```
+
+Delete a workflow or secret by kind and name:
+
+```sh
+go run ./cmd/flowforge delete workflow telegram-echo
+go run ./cmd/flowforge delete secret telegram-proxy
+```
+
+You can also identify the resource from its manifest. Both forms are accepted:
+
+```sh
+go run ./cmd/flowforge delete -f examples/secrets/telegram-proxy.yaml
+go run ./cmd/flowforge delete secret examples/secrets/telegram-proxy.yaml
+```
+
+`Workflow` and `Secret` resources support create, list, get, update, and delete through their `/v1` endpoints. Workflows and secrets are persisted under the server's `--data-dir`. Secret responses never return stored values.
+
+Direct updates to a secret with `immutable: true` are rejected. The `apply` command uses an explicit atomic replacement when its manifest changes, so declarative updates still take effect without a delete/create gap.
+
+### CLI Completion
+
+Build the CLI as an executable. The `cmd/flowforge` directory itself cannot be executed:
+
+```sh
+mkdir -p bin
+go build -o bin/flowforge ./cmd/flowforge
+```
+
+Install fish completion permanently:
+
+```fish
+bin/flowforge completion install fish
+```
+
+Start a new fish session, or load it immediately:
+
+```fish
+source ~/.config/fish/completions/flowforge.fish
+```
+
+The fish completion suggests commands, resource kinds, output formats, manifest paths, and resource names returned by the running server. Add `bin` to `PATH` if you want to invoke the command as `flowforge`. Completion generators are also available for bash and zsh:
+
+```sh
+flowforge completion bash
+flowforge completion zsh
+```
 
 ## Live Telegram Sends
 

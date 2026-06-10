@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"flowforge/internal/app"
@@ -31,11 +32,15 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("POST /v1/secrets", s.handleCreateSecret)
+	mux.HandleFunc("GET /v1/secrets", s.handleListSecrets)
 	mux.HandleFunc("GET /v1/secrets/", s.handleGetSecret)
 	mux.HandleFunc("PUT /v1/secrets/", s.handleUpdateSecret)
 	mux.HandleFunc("DELETE /v1/secrets/", s.handleDeleteSecret)
-	mux.HandleFunc("POST /v1/workflows", s.handleSaveWorkflow)
+	mux.HandleFunc("POST /v1/workflows", s.handleCreateWorkflow)
 	mux.HandleFunc("GET /v1/workflows", s.handleListWorkflows)
+	mux.HandleFunc("GET /v1/workflows/", s.handleGetWorkflow)
+	mux.HandleFunc("PUT /v1/workflows/", s.handleUpdateWorkflow)
+	mux.HandleFunc("DELETE /v1/workflows/", s.handleDeleteWorkflow)
 	mux.HandleFunc("POST /webhooks/telegram", s.handleTelegramWebhook)
 	return mux
 }
@@ -74,9 +79,17 @@ func writeError(w http.ResponseWriter, status int, err error) {
 }
 
 func secretNameFromPath(path string) (string, error) {
-	name := strings.TrimPrefix(path, "/v1/secrets/")
+	return resourceNameFromPath(path, "/v1/secrets/", "secret")
+}
+
+func workflowNameFromPath(path string) (string, error) {
+	return resourceNameFromPath(path, "/v1/workflows/", "workflow")
+}
+
+func resourceNameFromPath(path, prefix, kind string) (string, error) {
+	name := strings.TrimPrefix(path, prefix)
 	if name == "" || strings.Contains(name, "/") {
-		return "", fmt.Errorf("secret name is required")
+		return "", fmt.Errorf("%s name is required", kind)
 	}
 	return name, nil
 }
@@ -94,6 +107,7 @@ func secretView(secret secrets.SecretResource) map[string]any {
 	for key := range secret.Data {
 		keys = append(keys, key)
 	}
+	sort.Strings(keys)
 	return map[string]any{
 		"apiVersion": secret.APIVersion,
 		"kind":       secret.Kind,
@@ -114,6 +128,19 @@ func secretStatus(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, secrets.ErrInvalidSecret), errors.Is(err, secrets.ErrSecretImmutable):
 		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func workflowStatus(err error) int {
+	switch {
+	case err == nil:
+		return http.StatusOK
+	case errors.Is(err, store.ErrWorkflowNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, store.ErrWorkflowExists):
+		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError
 	}

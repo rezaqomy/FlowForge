@@ -65,6 +65,50 @@ func TestEncryptedFileStoreUpdateAndDelete(t *testing.T) {
 	}
 }
 
+func TestEncryptedFileStoreListsSecretsByName(t *testing.T) {
+	store := NewEncryptedFileStore(t.TempDir(), testCipher())
+	for _, name := range []string{"second", "first"} {
+		if err := store.Create(context.Background(), SecretResource{
+			Metadata: Metadata{Name: name},
+			Data:     map[string][]byte{"token": []byte(name)},
+		}); err != nil {
+			t.Fatalf("Create(%q) error = %v", name, err)
+		}
+	}
+	list, err := store.List(context.Background())
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(list) != 2 || list[0].Metadata.Name != "first" || list[1].Metadata.Name != "second" {
+		t.Fatalf("List() returned unexpected order: %#v", list)
+	}
+}
+
+func TestEncryptedFileStoreExplicitlyReplacesImmutableSecret(t *testing.T) {
+	store := NewEncryptedFileStore(t.TempDir(), testCipher())
+	if err := store.Create(context.Background(), SecretResource{
+		Metadata:  Metadata{Name: "service-credential"},
+		Data:      map[string][]byte{"token": []byte("old")},
+		Immutable: true,
+	}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := store.Replace(context.Background(), SecretResource{
+		Metadata:  Metadata{Name: "service-credential"},
+		Data:      map[string][]byte{"token": []byte("new")},
+		Immutable: true,
+	}); err != nil {
+		t.Fatalf("Replace() error = %v", err)
+	}
+	value, err := store.Resolve(context.Background(), SecretRef{Name: "service-credential", Key: "token"})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if string(value) != "new" {
+		t.Fatalf("Resolve() = %q, want new", value)
+	}
+}
+
 func TestEncryptedFileStoreRejectsInvalidLookupName(t *testing.T) {
 	store := NewEncryptedFileStore(t.TempDir(), testCipher())
 
