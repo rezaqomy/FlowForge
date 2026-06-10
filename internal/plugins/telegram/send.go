@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -224,7 +225,14 @@ func (s *SendOperation) proxyURL(ctx context.Context) (string, error) {
 		return strings.TrimSpace(s.ProxyURL), nil
 	}
 	if s.ProxyURLRef != nil {
-		return s.resolveSecretString(ctx, *s.ProxyURLRef, "telegram proxy URL")
+		value, err := s.resolveSecretString(ctx, *s.ProxyURLRef, "telegram proxy URL")
+		if err != nil {
+			if errors.Is(err, secrets.ErrSecretNotFound) {
+				return "", nil
+			}
+			return "", err
+		}
+		return value, nil
 	}
 	return strings.TrimSpace(os.Getenv(proxyEnvVar)), nil
 }

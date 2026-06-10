@@ -2,12 +2,12 @@ apiVersion: flowforge/v1alpha1
 kind: Workflow
 
 metadata:
-  name: telegram-plugin-example
+  name: telegram-echo
   labels:
     plugin: telegram
   annotations:
-    description: Sends an incoming Telegram message to an admin chat.
-    credentials: Use examples/secrets/telegram-bot.yaml and examples/secrets/telegram-proxy.yaml for live mode.
+    description: Echoes incoming Telegram text messages back to the same chat.
+    credentials: Use examples/secrets/telegram-bot.yaml and optionally telegram-proxy.yaml for live mode.
 
 spec:
   trigger:
@@ -15,11 +15,9 @@ spec:
     as: message
 
   steps:
-    - id: forward_to_admin
+    - id: echo
       do: telegram.send
       as: sent
       with:
-        to: "$inputs.admin_chat_id"
+        to: "$message.chat_id"
         text: "$message.text"
-        parse_mode: HTML
-        disable_notification: true

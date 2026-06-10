@@ -116,3 +116,26 @@ spec:
 `telegram.send` can read the bot token from the encrypted secret store with `SecretRef{Name: "telegram-bot", Key: "api-key"}` when a workflow runs in `live` mode. `TELEGRAM_BOT_TOKEN` remains available as a fallback. Keep the token out of workflow YAML and pass chat ids through runtime inputs, for example `inputs.admin`.
 
 The optional proxy can also come from a secret, for example `SecretRef{Name: "telegram-proxy", Key: "url"}`. `TELEGRAM_PROXY_URL` remains available as a fallback. Supported schemes are `http`, `https`, and `socks5`; keep proxy credentials out of workflow YAML.
+
+## Telegram Polling Echo
+
+Start the HTTP server. Telegram polling is enabled by default and waits until the bot token secret exists:
+
+```sh
+go run ./cmd/server -addr 127.0.0.1:8080 -data-dir .flowforge
+```
+
+Apply the echo workflow and encrypted bot token from manifest files:
+
+```sh
+go run ./cmd/flowforge apply -f examples/plugins/telegram.yaml
+go run ./cmd/flowforge apply -f examples/secrets/telegram-bot.yaml
+```
+
+If you need a proxy:
+
+```sh
+go run ./cmd/flowforge apply -f examples/secrets/telegram-proxy.yaml
+```
+
+Send a text message to the bot. FlowForge polls Telegram with `getUpdates`, converts text messages into `telegram.message` events, and runs matching workflows in `live` mode.

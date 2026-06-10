@@ -6,7 +6,11 @@ import (
 )
 
 func Register(reg *kernel.Registry, cat *catalog.Registry) {
-	reg.Register("telegram.send", NewSendOperation())
+	RegisterWithOptions(reg, cat, SendOptions{})
+}
+
+func RegisterWithOptions(reg *kernel.Registry, cat *catalog.Registry, options SendOptions) {
+	reg.Register("telegram.send", NewSendOperationWithOptions(options))
 	cat.RegisterManifest(catalog.PluginManifest{
 		Name: "telegram",
 		Triggers: []catalog.TriggerManifest{
