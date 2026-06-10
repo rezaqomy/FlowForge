@@ -71,3 +71,45 @@ SecretRef{Name: "service-credential", Key: "api-key"}
 ```
 
 Resolved values are returned as bytes and should be used just-in-time by integrations. They should not be copied into workflow scope or operation results.
+
+## Telegram Credentials
+
+Telegram credentials can be stored as encrypted `Secret` resources instead of process environment variables:
+
+```yaml
+apiVersion: flowforge/v1alpha1
+kind: Secret
+metadata:
+  name: telegram-bot
+type: flowforge.io/api-key
+immutable: true
+stringData:
+  api-key: "<telegram-bot-token>"
+```
+
+Optional proxy credentials can be stored separately:
+
+```yaml
+apiVersion: flowforge/v1alpha1
+kind: Secret
+metadata:
+  name: telegram-proxy
+type: Opaque
+immutable: true
+stringData:
+  url: "socks5://127.0.0.1:1080"
+```
+
+Wire the stored values into the Telegram plugin when registering it:
+
+```go
+store := secrets.NewEncryptedFileStore(secretDir, cipher)
+send := telegram.NewSendOperationWithOptions(telegram.SendOptions{
+    SecretResolver: store,
+    BotTokenRef:    &secrets.SecretRef{Name: "telegram-bot", Key: "api-key"},
+    ProxyURLRef:    &secrets.SecretRef{Name: "telegram-proxy", Key: "url"},
+})
+reg.Register("telegram.send", send)
+```
+
+The encrypted file backend writes ciphertext to disk with `0600` file permissions. Keep the master key outside the repository and back it up separately; without it, saved secrets cannot be decrypted.

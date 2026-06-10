@@ -1,0 +1,22 @@
+apiVersion: flowforge/v1alpha1
+kind: Workflow
+
+metadata:
+  name: storage-plugin-example
+  labels:
+    plugin: storage
+  annotations:
+    description: Saves an incoming message under a runtime-provided key.
+
+spec:
+  trigger:
+    type: telegram.message
+    as: message
+
+  steps:
+    - id: save_message
+      do: storage.save
+      as: saved
+      with:
+        key: "$inputs.storage_key"
+        value: "$message.text"

@@ -1,0 +1,23 @@
+apiVersion: flowforge/v1alpha1
+kind: Workflow
+
+metadata:
+  name: telegram-echo
+  labels:
+    plugin: telegram
+  annotations:
+    description: Echoes incoming Telegram text messages back to the same chat.
+    credentials: Use examples/secrets/telegram-bot.yaml and optionally telegram-proxy.yaml for live mode.
+
+spec:
+  trigger:
+    type: telegram.message
+    as: message
+
+  steps:
+    - id: echo
+      do: telegram.send
+      as: sent
+      with:
+        to: "$message.chat_id"
+        text: "$message.text"

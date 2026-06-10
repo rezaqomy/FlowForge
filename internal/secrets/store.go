@@ -3,13 +3,16 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 )
 
 type Store interface {
 	Create(ctx context.Context, secret SecretResource) error
 	Get(ctx context.Context, name string) (SecretResource, error)
+	List(ctx context.Context) ([]SecretResource, error)
 	Update(ctx context.Context, secret SecretResource) error
+	Replace(ctx context.Context, secret SecretResource) error
 	Delete(ctx context.Context, name string) error
 	Resolve(ctx context.Context, ref SecretRef) ([]byte, error)
 }
@@ -63,6 +66,28 @@ func (s *EncryptedMemoryStore) Get(_ context.Context, name string) (SecretResour
 	return secret.deepCopy(), nil
 }
 
+func (s *EncryptedMemoryStore) List(_ context.Context) ([]SecretResource, error) {
+	s.mu.RLock()
+	encryptedSecrets := make([]EncryptedSecret, 0, len(s.secrets))
+	for _, encrypted := range s.secrets {
+		encryptedSecrets = append(encryptedSecrets, encrypted)
+	}
+	s.mu.RUnlock()
+
+	out := make([]SecretResource, 0, len(encryptedSecrets))
+	for _, encrypted := range encryptedSecrets {
+		secret, err := s.cipher.Decrypt(encrypted)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, secret.deepCopy())
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Metadata.Name < out[j].Metadata.Name
+	})
+	return out, nil
+}
+
 func (s *EncryptedMemoryStore) Update(_ context.Context, secret SecretResource) error {
 	normalized := secret.Normalized()
 
@@ -82,6 +107,25 @@ func (s *EncryptedMemoryStore) Update(_ context.Context, secret SecretResource) 
 	encrypted, err := s.cipher.Encrypt(normalized)
 	if err != nil {
 		return err
+	}
+	s.secrets[normalized.Metadata.Name] = encrypted
+	return nil
+}
+
+func (s *EncryptedMemoryStore) Replace(_ context.Context, secret SecretResource) error {
+	normalized := secret.Normalized()
+	if err := ValidateCreate(normalized); err != nil {
+		return err
+	}
+	encrypted, err := s.cipher.Encrypt(normalized)
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.secrets[normalized.Metadata.Name]; !ok {
+		return ErrSecretNotFound
 	}
 	s.secrets[normalized.Metadata.Name] = encrypted
 	return nil

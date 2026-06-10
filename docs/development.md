@@ -76,9 +76,8 @@ For new behavior, prefer small package-level tests. Add an example-level test wh
 
 ### HTTP API
 
-`internal/api` currently contains placeholders. A future API should likely expose:
+`internal/api` exposes lifecycle operations for workflow and secret resources. Future API work should add:
 
-- Workflow creation and retrieval.
 - Workflow validation.
 - Dry-run execution.
 - Live execution.

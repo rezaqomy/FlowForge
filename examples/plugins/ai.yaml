@@ -1,0 +1,22 @@
+apiVersion: flowforge/v1alpha1
+kind: Workflow
+
+metadata:
+  name: ai-plugin-example
+  labels:
+    plugin: ai
+  annotations:
+    description: Classifies whether an incoming message is important.
+
+spec:
+  trigger:
+    type: telegram.message
+    as: message
+
+  steps:
+    - id: analyze_importance
+      do: ai.importance
+      as: analysis
+      with:
+        text: "$message.text"
+        context: "$inputs.business_context"

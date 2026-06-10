@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 type EncryptedFileStore struct {
@@ -45,6 +47,36 @@ func (s *EncryptedFileStore) Get(_ context.Context, name string) (SecretResource
 	return secret.deepCopy(), nil
 }
 
+func (s *EncryptedFileStore) List(_ context.Context) ([]SecretResource, error) {
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []SecretResource{}, nil
+		}
+		return nil, err
+	}
+	out := make([]SecretResource, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".json")
+		encrypted, err := s.read(name)
+		if err != nil {
+			return nil, err
+		}
+		secret, err := s.cipher.Decrypt(encrypted)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, secret.deepCopy())
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Metadata.Name < out[j].Metadata.Name
+	})
+	return out, nil
+}
+
 func (s *EncryptedFileStore) Update(_ context.Context, secret SecretResource) error {
 	normalized := secret.Normalized()
 	current, err := s.read(normalized.Metadata.Name)
@@ -56,6 +88,21 @@ func (s *EncryptedFileStore) Update(_ context.Context, secret SecretResource) er
 		return err
 	}
 	if err := ValidateUpdate(currentSecret, normalized); err != nil {
+		return err
+	}
+	encrypted, err := s.cipher.Encrypt(normalized)
+	if err != nil {
+		return err
+	}
+	return s.write(s.path(normalized.Metadata.Name), encrypted)
+}
+
+func (s *EncryptedFileStore) Replace(_ context.Context, secret SecretResource) error {
+	normalized := secret.Normalized()
+	if err := ValidateCreate(normalized); err != nil {
+		return err
+	}
+	if _, err := s.read(normalized.Metadata.Name); err != nil {
 		return err
 	}
 	encrypted, err := s.cipher.Encrypt(normalized)
